@@ -4,6 +4,7 @@ All notable changes will be documented here. Releases follow Semantic Versioning
 
 ## Unreleased
 
+- Publish the unified frontend/API/MCP container as one multiarch image for linux/amd64 and linux/arm64.
 - Add the dark Binario frontend with a unified city/date search, bus/train views, progressive provider results, stable snapshot pagination, filters and official booking links.
 - Share HTTP domain types and show actual stops, nullable fares, passenger basis, partner operators and excluded-transfer warnings without inventing data.
 - Bundle the frontend into the existing Node Docker image and listener, with static security headers, restricted assets and same-origin browser API aliases; preserve legacy HTTP and MCP routes.

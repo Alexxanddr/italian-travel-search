@@ -11,7 +11,7 @@ Implementation review: 2026-11-05.
 | Backend `npm run check` | 88 offline tests, type check, lint and build passed; existing HTTP/provider contracts preserved; static/alias handling added |
 | `npm audit --audit-level=high` | No vulnerabilities at verification |
 | Manual browser flow against real HTTP backend | Search, progress, compare, source/details, overnight dates and partial provider failure checked; evidence in ignored docs/private |
-| Combined Docker image runtime | linux/amd64 build and default non-root entrypoint passed; private-file exclusion, UI/assets, HTTP/MCP and four synthetic browser cases verified |
+| Combined Docker image runtime | linux/amd64 and linux/arm64 builds and default non-root entrypoints passed; UI/assets, HTTP/MCP and four synthetic browser cases verified on each architecture |
 
 ## Offline coverage
 
@@ -28,7 +28,7 @@ Tests block all nonlocal browser origins and inject fetch into HTTP client tests
 
 ## Remaining scope
 
-Browser automation uses Chromium desktop and Chromium mobile emulation, not physical devices or a complete Safari/Firefox/assistive-technology matrix. The manual browser check is low volume and cannot establish universal provider uptime or fare validity. Backend tests prove its existing behavior, not commercial price guarantees. Docker validation covers linux/amd64 on Node 24; other image architectures were not exercised. Live counts/prices belong only in ignored private notes, never in synthetic tests or public claims.
+Browser automation uses Chromium desktop and Chromium mobile emulation, not physical devices or a complete Safari/Firefox/assistive-technology matrix. The manual browser check is low volume and cannot establish universal provider uptime or fare validity. Backend tests prove its existing behavior, not commercial price guarantees. Docker validation covers linux/amd64 (emulated) and linux/arm64 (native) on Node 24. Live counts/prices belong only in ignored private notes, never in synthetic tests or public claims.
 
 The 0.3.8 update adds synthetic regression coverage for native Italo + Trenitalia legs via Paola, the full connection fare, exact Cosenza arrival, all-stations city resolution, refusal to choose an arbitrary station, and reuse of completed autocomplete lookups. Manual evidence for the updated backend and unified dark form remains in ignored docs/private.
 
@@ -43,3 +43,7 @@ The root Dockerfile now includes the built frontend. Five additional offline bac
 ## Docker verification completed
 
 The unified linux/amd64 image was built and tested locally after Docker became available. Its default entrypoint ran with `--network none`: non-root identity, production-only filesystem, UI assets and headers, browser/legacy APIs, private-path rejection, input validation and MCP initialization passed. All 88 backend checks also passed in the Node 24 Linux build stage with network disabled and read-only synthetic test fixtures. The four production browser cases were rerun against the final image on a dedicated Docker test network with a read-only synthetic provider fixture, exposed only on loopback. No live provider call or image publication was part of these local checks. Both dependency audits returned zero vulnerabilities.
+
+## Multiarch verification
+
+A single local image index was built with `docker buildx build --platform linux/amd64,linux/arm64 --load`. Explicit platform runs returned `x64` and `arm64`. Both final default entrypoints passed offline non-root, UI/CSP, legacy/browser provider routes, private-path rejection and MCP initialization checks with `--network none`. All 88 backend tests, type checking, lint and compilation passed inside each platform build stage with network disabled. The four production browser cases passed against the ARM64 final image with the read-only synthetic fixture; the earlier AMD64 final-image browser run also passed. The publication workflow now pushes both runnable variants under the same latest and commit tags.

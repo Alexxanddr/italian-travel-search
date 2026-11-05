@@ -51,10 +51,22 @@ curl -i http://127.0.0.1:3000/.env
 curl -i http://127.0.0.1:3000/api/mcp
 ```
 
-The linux/amd64 image was built and started locally. Default-entrypoint smoke checks passed with network disabled, and the production browser suite passed against the image using synthetic providers on a dedicated Docker test network. The 88 backend checks also passed inside the Node 24 Linux build stage without network. Other image architectures were not tested. No local check calls live providers or changes the cluster; an authorized push to master triggers the existing GHCR publication workflow.
+Both linux/amd64 and linux/arm64 images were built and started locally. Default-entrypoint smoke checks passed with network disabled, and the production browser suite passed against the image using synthetic providers on a dedicated Docker test network. The 88 backend checks also passed inside both Node 24 Linux build stages without network. The publication workflow now targets both linux/amd64 and linux/arm64 under one image index. No local check calls live providers or changes the cluster; an authorized push to master triggers the existing GHCR publication workflow.
 
 ## Existing infrastructure
 
 The existing container publication workflow rebuilds the same image when frontend runtime/build files change. No new image or Deployment is needed. Existing API/MCP consumers keep their URLs. Keep one backend replica while snapshots remain process-local. If an ingress is considered later, explicitly choose which existing API/MCP paths it may expose; the UI does not itself require exposing MCP to public users. Review deployment authorization and environment-specific instructions separately. Publishing source does not require hosting this service.
 
 To rerun the browser suite against an already running synthetic container on loopback port 4174, set `CONTAINER_TEST=1` when running `npm --prefix frontend run test:production`. The fixture entrypoint `frontend/test/production-server.mjs` honors HOST/PORT so it can be mounted read-only into the image for tests; it is not copied into the production image. Keep that container on a dedicated test network and do not use live providers in automation.
+
+## Multiarch builds
+
+The same published image tag supports `linux/amd64` and `linux/arm64`. Build both locally with a multi-platform-capable Docker builder:
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 --load -t italian-travel-search:multiarch-verification .
+docker run --rm --network none --platform linux/amd64 italian-travel-search:multiarch-verification node -p process.arch
+docker run --rm --network none --platform linux/arm64 italian-travel-search:multiarch-verification node -p process.arch
+```
+
+The expected outputs are `x64` and `arm64`. The existing GitHub workflow uses QEMU and Buildx to push both variants together; no architecture-specific deployment or second frontend image is needed. Inspect the published tag with `docker buildx imagetools inspect ghcr.io/alexxanddr/italian-travel-search:latest` and confirm both runnable platform entries. A Docker store that cannot load a multi-platform image can test each `--platform` build separately instead.

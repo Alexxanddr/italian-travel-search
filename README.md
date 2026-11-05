@@ -103,6 +103,8 @@ npm run check:all
 
 `npm run build` and `npm run check` retain their existing backend behavior. The frontend shares domain types and keeps its own build lockfile. The existing root Dockerfile builds both parts into **one image**: Node serves the UI at `/`, the browser API at `/api/*`, the existing HTTP endpoints and MCP at `/mcp`, all on port 3000. No NGINX or second container is needed. The npm package remains API/MCP-focused and excludes frontend assets/tooling. See the [frontend guide](frontend/README.md), [single-image Docker packaging](frontend/docs/deployment.md), and [publication review](docs/publication-review.md). Publishing source code does not require hosting a live website.
 
+The published image is multiarch: `linux/amd64` and `linux/arm64` share the same tag, and Docker selects the matching architecture automatically.
+
 ### One image, one process
 
 ```sh
