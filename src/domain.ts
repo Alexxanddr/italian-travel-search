@@ -85,6 +85,7 @@ export type RailPrice = {
 };
 
 export type RailLeg = {
+  operator?: "italo" | "trenitalia";
   trainNumber: string;
   transportMode?: "urban_transfer";
   includedInPrice?: boolean;

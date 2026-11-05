@@ -63,6 +63,15 @@ presented as a train or as included in the quoted fare when excluded.
 These optional fields are preserved in structured output, snapshot pages
 and compact display text.
 
+### Rail connections
+
+For Roma–Cosenza, keep Cosenza as the requested destination. Native booking
+solutions can include a change at Paola. Preserve all `legs`, their optional
+`operator`, timing, whole-itinerary price and destination. The top-level
+provider identifies the booking source; an Italo result can include a
+Trenitalia regional leg. Compact rail text explicitly lists changes and
+interchange stations. HTTP/MCP snapshots preserve these fields.
+
 ### Rail tools
 
 - `list_train_providers` lists operators and configured schedule, price, live-status, and station-board capabilities without contacting upstream systems.

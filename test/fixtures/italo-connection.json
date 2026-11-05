@@ -1,0 +1,32 @@
+{
+  "bookingId": "synthetic-connection",
+  "trips": [{
+    "direction": "forward",
+    "travelSolutions": [{
+      "numberOfChanges": 1,
+      "journeys": [{
+        "sequence": 0,
+        "serviceProvider": "ITALO",
+        "departureStation": "RMT",
+        "arrivalStation": "PAR",
+        "segments": [{
+          "departureStation": "RMT", "arrivalStation": "PAR",
+          "trainNumber": "1000", "std": "2027-01-15T08:00:00", "sta": "2027-01-15T11:00:00",
+          "legs": [{"departureStation":"RMT","arrivalStation":"NAP"},{"departureStation":"NAP","arrivalStation":"PAR"}],
+          "fares": [{"availableCount": 5, "offerType": "Synthetic Flex", "productClass": "Synthetic Smart", "paxFares": [{"fullPaxDiscountPrice": 19.9}]}]
+        }]
+      }, {
+        "sequence": 1,
+        "serviceProvider": "TRENITALIA",
+        "brand": "REGIONALE",
+        "departureStation": "PAR",
+        "arrivalStation": "COZ",
+        "segments": [{
+          "departureStation": "PAR", "arrivalStation": "COZ",
+          "trainNumber": "5000", "std": "2027-01-15T11:20:00", "sta": "2027-01-15T11:45:00",
+          "fares": [{"availableCount": 5, "paxFares": [{"fullPaxDiscountPrice": 2.7}]}]
+        }]
+      }]
+    }]
+  }]
+}

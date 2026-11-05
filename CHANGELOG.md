@@ -2,6 +2,12 @@
 
 All notable changes will be documented here. Releases follow Semantic Versioning.
 
+## 0.3.8 - 2026-11-05
+
+- Preserve native Italo + Trenitalia regional connections, including Roma–Paola–Cosenza, with per-leg operators and a complete itinerary fare.
+- Validate connection stations/times and complete passenger fares; preserve explicit provider failures and nullable prices.
+- Show interchange stations in MCP text and cover partner connections through HTTP/MCP snapshots and offline fixtures.
+
 ## 0.3.7 - 2026-11-05
 
 - Accept same-day bus and train journey searches using the Europe/Rome calendar; continue rejecting past and invalid dates.

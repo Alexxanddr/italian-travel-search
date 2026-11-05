@@ -196,3 +196,11 @@ Contributions are welcome; start with [CONTRIBUTING.md](CONTRIBUTING.md). Report
 ## License
 
 Source code is available under the [MIT License](LICENSE). The license covers this repository's code, not third-party data, provider trademarks, or access rights to upstream systems.
+
+### Train connections to Cosenza
+
+Search Cosenza directly: the backend preserves native connections via Paola,
+including Italo services followed by a Trenitalia regional train when offered
+by the booking API. Results include both legs, their operators, the interchange
+and the combined passenger fare when fully available. The destination is never
+silently replaced with Paola. See [Train API](docs/api-trains.md#cosenza-connections-via-paola).

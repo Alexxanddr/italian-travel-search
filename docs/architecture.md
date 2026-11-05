@@ -184,6 +184,6 @@ The automated suite is deterministic and offline. Live checks are separate, low-
 - Streamable HTTP is cluster-internal and unauthenticated; no public MCP ingress is implemented.
 - `LiveRailProvider` normalizes each operator's booking solutions into the existing journey contract. `RailSearchService` aggregates these live providers and preserves partial results. Failed booking searches never produce theoretical journeys. Live status and boards remain independent; Italo quote state is temporary and cleaned up best-effort.
 - Italo In Viaggio is enabled only for standalone train status and boards. Its train status is never joined to a dated schedule because the source cannot prove the service date.
-- Connections are returned only when reported by the booking API; the service does not construct routes from timetables or join separate operators.
+- Connections are returned only when reported by the booking API; the service does not construct routes from timetables or combine independently searched tickets. Italo native planning responses may contain an Italo service followed by a Trenitalia regional connection; the adapter preserves both operators and requires contiguous stations and non-overlapping times.
 
 Production-hardening implications are documented in [operations.md](operations.md).

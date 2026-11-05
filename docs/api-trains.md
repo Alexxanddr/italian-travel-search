@@ -68,8 +68,10 @@ codes documented in [HTTP API](api.md).
 Trenitalia pagination excludes departures after the requested day. If the
 100-result safety bound is reached, the quote fails explicitly with
 `QUOTE_UNAVAILABLE`; it is never presented as a complete live response.
-Italo structures other than the verified single-operator, single-segment
-shape fail explicitly rather than silently dropping those solutions.
+Italo supports direct single-segment services and the verified native booking
+shape containing an Italo journey followed by a Trenitalia regional journey,
+with one segment per journey. Other shapes still fail explicitly. These are
+connections already offered by the booking API, not independently combined tickets.
 
 ## `GET /train-locations`
 
@@ -173,6 +175,29 @@ Abbreviated response (the real `legs` array contains every leg):
 The price is the total for the requested passengers at `observedAt`, not a
 per-person price. `bookingUrl` is only for manual continuation. The HTTP route
 returns the complete result set; MCP adds `offset` and `limit` pagination.
+
+### Cosenza connections via Paola
+
+Search for `destination=Cosenza` normally. The destination is never rewritten
+to Paola. Trenitalia returns its own through solutions; Italo can offer an
+Italo train to Paola plus a Trenitalia regional train to Cosenza in the same
+planning response. Both legs are preserved with their actual station names,
+train numbers and timestamps. `changes` is 1 and total duration includes the
+wait at Paola; intermediate stops on the same train do not count as changes.
+
+`provider: "italo"` identifies the booking source, not every operating carrier.
+Each Italo booking leg exposes optional `operator: "italo" | "trenitalia"`.
+The existing `bookingUrl` continues on Italo's official booking site.
+
+The connection price sums the cheapest available quoted segment fares for all
+requested passengers, rounded to cents, with provenance identifying the partner
+connection. It is never just the Roma–Paola fare. If either leg has no complete
+passenger quote or sufficient availability, the journey remains visible with
+`price: null` and `available: false`. Mixed-operator results do not inherit the
+first leg's fare name or travel class as a label for the whole itinerary.
+Unknown stations/operators, overlapping legs, disconnected endpoints and
+unverified multi-segment structures produce explicit provider errors. The server
+does not generate a regional transfer or fall back to an arrival in Paola.
 
 ### Transfers outside the quoted fare
 

@@ -64,6 +64,7 @@ const journeySchema = z.object({
 });
 const dataSourceSchema = z.object({ source: z.string(), publishedAt: z.string(), validFrom: z.string(), validThrough: z.string() });
 const railLegSchema = z.object({
+  operator: z.enum(["italo", "trenitalia"]).optional(),
   transportMode: z.literal("urban_transfer").optional(), includedInPrice: z.boolean().optional(), description: z.string().optional(),
   trainNumber: z.string(),
   origin: z.object({ id: z.string(), name: z.string() }),
@@ -226,7 +227,7 @@ export function createBusMcpServer(dependencies: BusMcpDependencies = {}): McpSe
     try {
       consumeSearch();
       const output = await snapshots.page("train", () => railService.searchJourneys(validateSearchInput({ origin, destination, date, adults, children }), provider), { snapshot, searchId, offset, limit, hasQuery: [origin, destination, date, provider, adults, children].some((value) => value !== undefined) });
-      return toolResult(output, [...output.journeys.map((journey) => `- [${journey.provider}] ${journey.origin.name} → ${journey.destination.name}: ${journey.departure} → ${journey.arrival}, ${journey.price === null ? "price unavailable" : `${journey.price.currency} ${journey.price.amount.toFixed(2)}`}${journey.bookingUrl === undefined ? "" : ` — [Continue on ${journey.provider}](${journey.bookingUrl})`}${journey.warnings?.length ? ` — ${journey.warnings.join("; ")}` : ""}`), ...formatErrors(output.errors)].join("\n") || "No train journeys found.");
+      return toolResult(output, [...output.journeys.map((journey) => `- [${journey.provider}] ${journey.origin.name} → ${journey.destination.name}: ${journey.departure} → ${journey.arrival}, ${journey.price === null ? "price unavailable" : `${journey.price.currency} ${journey.price.amount.toFixed(2)}`}${journey.changes > 0 ? ` — ${journey.changes} change(s), via ${journey.legs.slice(0, -1).map((leg) => leg.destination.name).join(" → ")}` : ""}${journey.bookingUrl === undefined ? "" : ` — [Continue on ${journey.provider}](${journey.bookingUrl})`}${journey.warnings?.length ? ` — ${journey.warnings.join("; ")}` : ""}`), ...formatErrors(output.errors)].join("\n") || "No train journeys found.");
     } catch (error) { return toolError(error); }
   });
 

@@ -52,7 +52,7 @@ export class ItaloQuoteProvider implements RailQuoteProvider {
       }
       if (result === undefined) throw new AppError("QUOTE_UNAVAILABLE", "Italo quote operation timed out", 503);
       bookingId = optionalString(result.bookingId);
-      const quotes = parseQuotes(result, { id: origin, name: requiredString(object(stations[origin]).name) }, { id: destination, name: requiredString(object(stations[destination]).name) });
+      const quotes = parseQuotes(result, { id: origin, name: requiredString(object(stations[origin]).name) }, { id: destination, name: requiredString(object(stations[destination]).name) }, stations, input.adults + input.children);
       this.#cache.set(key, quotes);
       return quotes;
     } finally {
@@ -90,25 +90,54 @@ function stationId(value: string, stations: Record<string, unknown>) {
   if (matches.length !== 1) throw new AppError(matches.length > 1 ? "AMBIGUOUS_LOCATION" : "UNKNOWN_LOCATION", `Italo location ${value} was not resolved exactly`, 400);
   return matches[0][0];
 }
-function parseQuotes(result: Record<string, unknown>, origin: { id: string; name: string }, destination: { id: string; name: string }): RailQuote[] {
+function parseQuotes(result: Record<string, unknown>, origin: { id: string; name: string }, destination: { id: string; name: string }, stations: Record<string, unknown>, passengerCount: number): RailQuote[] {
   const observedAt = new Date().toISOString();
   const trip = array(result.trips).map(object).find((value) => value.direction === "forward");
   if (trip === undefined) return [];
   return array(trip.travelSolutions).flatMap((entry) => {
     const journeys = array(object(entry).journeys).map(object);
-    if (journeys.length !== 1 || journeys[0]?.serviceProvider !== "ITALO") throw new AppError("INCOMPATIBLE_RESPONSE", "Unsupported Italo journey structure", 502);
-    const segments = array(journeys[0].segments).map(object);
-    if (segments.length !== 1) throw new AppError("INCOMPATIBLE_RESPONSE", "Unsupported Italo connection structure", 502);
-    const segment = segments[0], trainNumber = requiredString(segment.trainNumber);
-    const departure = offsetRomeDateTime(requiredString(segment.std)), arrival = offsetRomeDateTime(requiredString(segment.sta));
-    const priced = array(segment.fares).map(object).flatMap((fare) => {
-      const passengers = array(fare.paxFares).map(object);
-      const total = passengers.reduce((sum, pax) => sum + (optionalNumber(pax.fullPaxDiscountPrice) ?? Number.NaN), 0);
-      return passengers.length > 0 && Number.isFinite(total) && total >= 0 && (optionalNumber(fare.availableCount) ?? 0) > 0 ? [{ total, fare }] : [];
-    }).sort((left, right) => left.total - right.total)[0];
-    return [{ trainNumbers: [trainNumber], departure, arrival, available: priced !== undefined,
-      price: priced === undefined ? null : { amount: priced.total, currency: "EUR", fareName: optionalString(priced.fare.offerType), travelClass: optionalString(priced.fare.productClass), observedAt, source: "Italo booking quote" },
-      observedAt, source: "Italo booking search", legs: [{ trainNumber, origin, destination, departure, arrival }] }];
+    const direct = journeys.length === 1 && journeys[0]?.serviceProvider === "ITALO";
+    const partnerConnection = journeys.length === 2 && journeys[0]?.serviceProvider === "ITALO" && journeys[1]?.serviceProvider === "TRENITALIA";
+    if (!direct && !partnerConnection) throw new AppError("INCOMPATIBLE_RESPONSE", "Unsupported Italo journey structure", 502);
+    const parts = journeys.map((journey, index) => {
+      const segments = array(journey.segments).map(object);
+      if (segments.length !== 1) throw new AppError("INCOMPATIBLE_RESPONSE", "Unsupported Italo connection structure", 502);
+      const segment = segments[0]!, trainNumber = requiredString(segment.trainNumber);
+      const departure = offsetRomeDateTime(requiredString(segment.std)), arrival = offsetRomeDateTime(requiredString(segment.sta));
+      if (!Number.isFinite(Date.parse(departure)) || !Number.isFinite(Date.parse(arrival)) || Date.parse(arrival) < Date.parse(departure)) {
+        throw new AppError("INCOMPATIBLE_RESPONSE", "Invalid Italo connection timing", 502);
+      }
+      const endpoint = (code: unknown, fallback: { id: string; name: string }) => {
+        if (code === undefined && direct) return fallback;
+        const id = requiredString(code);
+        if (!Object.hasOwn(stations, id)) throw new AppError("INCOMPATIBLE_RESPONSE", "Unknown Italo connection station", 502);
+        return { id, name: requiredString(object(stations[id]).name) };
+      };
+      const priced = array(segment.fares).map(object).flatMap((fare) => {
+        const passengers = array(fare.paxFares).map(object);
+        const total = passengers.reduce((sum, pax) => {
+          const amount = optionalNumber(pax.fullPaxDiscountPrice);
+          if (amount !== undefined && amount < 0) throw new AppError("INCOMPATIBLE_RESPONSE", "Invalid Italo quote price", 502);
+          return sum + (amount ?? Number.NaN);
+        }, 0);
+        return passengers.length === passengerCount && Number.isFinite(total) && total >= 0 && (optionalNumber(fare.availableCount) ?? 0) >= passengerCount ? [{ total, fare }] : [];
+      }).sort((left, right) => left.total - right.total)[0];
+      return { priced, leg: { operator: index === 0 ? "italo" as const : "trenitalia" as const, trainNumber,
+        origin: endpoint(segment.departureStation, origin), destination: endpoint(segment.arrivalStation, destination), departure, arrival } };
+    });
+    const first = parts[0]!, last = parts.at(-1)!;
+    for (let index = 1; index < parts.length; index += 1) {
+      const previous = parts[index - 1]!.leg, next = parts[index]!.leg;
+      if (previous.destination.id !== next.origin.id || Date.parse(next.departure) < Date.parse(previous.arrival)) {
+        throw new AppError("INCOMPATIBLE_RESPONSE", "Disconnected Italo connection", 502);
+      }
+    }
+    const available = parts.every(({ priced }) => priced !== undefined);
+    return [{ trainNumbers: parts.map(({ leg }) => leg.trainNumber), departure: first.leg.departure, arrival: last.leg.arrival, available,
+      price: !available ? null : { amount: Math.round(parts.reduce((sum, { priced }) => sum + priced!.total, 0) * 100) / 100, currency: "EUR",
+        ...(direct ? { fareName: optionalString(first.priced!.fare.offerType), travelClass: optionalString(first.priced!.fare.productClass) } : {}),
+        observedAt, source: partnerConnection ? "Italo booking quote including Trenitalia connection" : "Italo booking quote" },
+      observedAt, source: "Italo booking search", legs: parts.map(({ leg }) => leg) }];
   });
 }
 function object(value: unknown): Record<string, unknown> { if (typeof value !== "object" || value === null || Array.isArray(value)) throw new AppError("INCOMPATIBLE_RESPONSE", "Incompatible Italo quote response", 502); return value as Record<string, unknown>; }
