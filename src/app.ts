@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 
 import { AppError } from "./domain.ts";
+import { createWebHandler } from "./web.ts";
 import { createDefaultProviders } from "./providers/default.ts";
 import type { Provider } from "./providers/provider.ts";
 import { createRateLimiter } from "./rate-limit.ts";
@@ -40,7 +41,7 @@ export function createApp(providers: readonly Provider[] = createDefaultProvider
 
 export function createServer(dependencies: BusMcpDependencies = {}) {
   const shared = sharedDependencies(dependencies);
-  const app = createApp(shared.providers, shared.railProviders, shared.railLiveProviders, shared.snapshots);
+  const app = createWebHandler(createApp(shared.providers, shared.railProviders, shared.railLiveProviders, shared.snapshots));
   const mcp = createMcpApp(shared);
   const server = createHttpServer(async (request, response) => {
     const started = Date.now();

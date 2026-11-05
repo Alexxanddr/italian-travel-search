@@ -1,0 +1,193 @@
+import { test, expect, type Page, type Route } from '@playwright/test';
+import { bus, train, page as snapshot, query, railLocations, connection } from './fixtures.ts';
+import { queryString } from '../model.ts';
+import type { Journey, RailJourney } from '../contracts.ts';
+async function openFilters(page: Page) {
+  if (!await page.locator('#filter-panel').getAttribute('open').then(v => v !== null)) await page.locator('#filter-panel>summary').click();
+}
+const share = (overrides = {}) => `/?${queryString({ ...query, ...overrides })}`;
+type Scenario = { many?: boolean; partial?: boolean; expired?: boolean; slow?: boolean; today?: boolean; empty?: boolean; rate?: boolean; connection?: boolean; nullable?: boolean };
+async function mock(page: Page, scenario: Scenario = {}) {
+  const requests: URL[] = [];
+  await page.clock.install({ time: new Date('2026-11-05T12:00:00Z') });
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== 'http://127.0.0.1:4173') return route.abort();
+    if (!url.pathname.startsWith('/api/')) return route.continue();
+    requests.push(url);
+    const fulfill = (data: unknown, status = 200) => route.fulfill({ status, json: data });
+    if (scenario.rate && url.pathname.endsWith('providers')) return route.fulfill({ status: 429, headers: { 'retry-after': '60' }, json: { error: { code: 'RATE_LIMITED' } } });
+    if (url.pathname.endsWith('providers')) return fulfill({ providers: url.pathname.includes('train') ? [{ id: 'trenitalia' }, { id: 'italo' }] : [{ id: 'itabus' }] });
+    if (url.pathname.endsWith('train-locations')) return fulfill(railLocations(url.searchParams.get('query')!));
+    if (url.pathname.endsWith('locations')) return fulfill({ locations: [{ provider: 'itabus', id: 'ROM', name: 'Roma', city: 'Roma', source: 'live' }, { provider: 'itabus', id: 'COS', name: 'Cosenza', city: 'Cosenza', source: 'live' }], errors: [] });
+    if (scenario.expired && url.searchParams.has('searchId')) return fulfill({ error: { code: 'SEARCH_EXPIRED' } }, 410);
+    const provider = url.searchParams.get('provider') ?? 'trenitalia';
+    if (scenario.partial && provider === 'italo') return fulfill({ ...snapshot([]), errors: [{ provider, code: 'QUOTE_UNAVAILABLE', message: 'Synthetic provider failure' }] }, 503);
+    if (scenario.slow && provider === 'trenitalia') await new Promise(r => setTimeout(r, 650));
+    let journeys: Array<Journey | RailJourney> = scenario.empty ? [] : [provider === 'itabus' ? bus() : train(0, provider as 'trenitalia' | 'italo')];
+    if (scenario.connection && provider === 'italo') journeys = [connection()];
+    if (scenario.many && provider === 'trenitalia') journeys = Array.from({ length: 53 }, (_,i) => train(i));
+    if (scenario.today) journeys = [0,1].map(i => ({ ...bus(i), departure: `2026-11-05T${i ? '22' : '08'}:00:00+01:00`, arrival: i ? '2026-11-06T05:00:00+01:00' : '2026-11-05T15:00:00+01:00' }));
+    if (scenario.nullable && provider === 'itabus') journeys = [{ ...bus(), price: null, available: false }];
+    if (scenario.nullable && provider === 'trenitalia') journeys = [{ ...train(), changes: 1, warnings: ['Synthetic: biglietto urbano escluso'], legs: [{ ...train().legs[0]!, trainNumber: 'UB', transportMode: 'urban_transfer', includedInPrice: false }] }];
+    if (scenario.nullable && provider === 'italo') journeys = [{ ...train(0, 'italo'), legs: [{ ...train(0, 'italo').legs[0]!, trainNumber: 'UB', transportMode: 'urban_transfer', includedInPrice: true }] }];
+    return fulfill({ ...snapshot(journeys, Number(url.searchParams.get('offset') ?? 0)), errors: journeys.length ? [] : [{ provider, code: 'NO_JOURNEYS', message: 'Synthetic empty' }] });
+  });
+  return requests;
+}
+test('search form, keyboard autocomplete, share URL and official link', async ({ page }) => {
+  const requests = await mock(page);
+  await page.goto('/');
+  await expect(page.getByText('Scegli la tratta e la data per confrontare le partenze.')).toBeVisible();
+  await page.getByText('Bus', { exact: true }).first().click();
+  await page.locator('#origin').fill('Ro');
+  await expect(page.locator('#origin-options')).toBeVisible();
+  await page.locator('#origin').press('ArrowDown'); await page.locator('#origin').press('Enter');
+  await expect(page.locator('#origin')).toHaveValue('Roma');
+  await page.locator('#destination').fill('Cosenza'); await page.locator('#destination').press('Escape');
+  await page.locator('#date').fill('2027-01-15');
+  await page.getByRole('button', { name: 'Cerca', exact: true }).click();
+  await expect(page.locator('#search-status')).toContainText('Ricerca completata');
+  await expect(page.locator('#trip-list article')).toHaveCount(1);
+  await expect(page.locator('#trip-list')).toContainText('Rende Cosenza Nord');
+  await expect(page.locator('#trip-list')).toContainText('16 gen 2027');
+  await expect(page.locator('#trip-list')).toContainText('Cambi non dichiarati');
+  await expect(page.locator('#trip-list a.booking')).toHaveAttribute('href', 'https://app.itabus.it/');
+  expect(new URL(page.url()).searchParams.get('mode')).toBe('bus');
+  expect(requests.filter(r => r.pathname.endsWith('/journeys'))).toHaveLength(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+test('both modes, partial failure and progressive results preserve the successful operator', async ({ page }, testInfo) => {
+  await mock(page, { partial: true, slow: true });
+  await page.goto(share());
+  await expect(page.locator('#trip-list')).toContainText('Rende Cosenza Nord');
+  await expect(page.locator('#search-status')).toContainText('Ricerca incompleta');
+  await expect(page.locator('#trip-list article')).toHaveCount(2);
+  await expect(page.locator('#coverage')).toContainText('QUOTE_UNAVAILABLE');
+  await expect(page.locator('#sort-note')).toContainText('Confronto parziale');
+  await expect(page.locator('#suggestions')).toContainText('confronto incompleto');
+  await page.locator('#trip-list article').first().scrollIntoViewIfNeeded();
+  await page.screenshot({path: `test-results/comparison-${testInfo.project.name}.png`});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('#sort').selectOption('duration');
+  await expect(page.locator('#trip-list article').first()).toContainText('Trenitalia');
+  await openFilters(page);
+  await page.locator('#filters [name="mode"]').selectOption('bus');
+  await expect(page.locator('#trip-list article')).toHaveCount(1);
+});
+test('rail only loads all 53 results and sorts/filters the whole loaded coverage', async ({ page }) => {
+  const requests = await mock(page, { many: true });
+  await page.goto(share({ mode: 'train' }));
+  await expect(page.locator('#search-status')).toContainText('54 risultati caricati su 54');
+  await expect(page.locator('#trip-list article')).toHaveCount(54);
+  await page.locator('#sort').selectOption('price');
+  await expect(page.locator('#trip-list article').first()).toContainText('44,80 EUR');
+  await openFilters(page);
+  await page.locator('#filters [name="maxPrice"]').fill('45');
+  await expect(page.locator('#trip-list article')).toHaveCount(3);
+  const continuation = requests.find(r => r.searchParams.has('searchId'))!;
+  expect([...continuation.searchParams.keys()].sort()).toEqual(['limit','offset','searchId']);
+  await expect(page.locator('#sort-note')).toContainText('tutti i risultati');
+});
+test('today hides elapsed departures; toggle retains original date and overnight arrival', async ({ page }) => {
+  const requests = await mock(page, { today: true });
+  await page.goto(share({ mode: 'bus', date: '2026-11-05' }));
+  await expect(page.locator('#trip-list article')).toHaveCount(1);
+  await openFilters(page);
+  await expect(page.locator('#filters [name="future"]')).toBeChecked();
+  await expect(page.locator('#trip-list')).toContainText('6 nov 2026');
+  await openFilters(page);
+  await page.locator('#filters [name="future"]').uncheck();
+  await expect(page.locator('#trip-list article')).toHaveCount(2);
+  expect(requests.filter(r => r.pathname.endsWith('/journeys'))).toHaveLength(1);
+  expect(new URL(page.url()).searchParams.get('date')).toBe('2026-11-05');
+});
+test('null fare, excluded UB transfer, details and source remain explicit', async ({ page }) => {
+  await mock(page, { nullable: true }); await page.goto(share());
+  await expect(page.locator('#trip-list article')).toHaveCount(3);
+  const busResult = page.locator('#trip-list article').filter({ hasText: 'Itabus' });
+  await expect(busResult.locator('.fare')).toContainText('Non disponibile');
+  await expect(busResult.locator('.fare')).not.toContainText('0,00');
+  const railResult = page.locator('#trip-list article').filter({ hasText: 'Trenitalia' });
+  await expect(railResult.locator('.warnings')).toContainText('escluso');
+  await railResult.locator('summary').click();
+  await expect(railResult.locator('.legs')).toContainText('Trasferimento urbano');
+  await expect(railResult.locator('.legs')).not.toContainText('Treno UB');
+  await expect(railResult.locator('.trip-details')).toContainText('Synthetic quote fixture');
+  const includedTransfer = page.locator('#trip-list article').filter({ hasText: 'Italo' });
+  await includedTransfer.locator('summary').click();
+  await expect(includedTransfer.locator('.legs')).toContainText('Trasferimento urbano');
+  await expect(includedTransfer.locator('.legs')).not.toContainText('Inclusione nel prezzo non dichiarata');
+  await railResult.locator('summary').focus(); await page.keyboard.press('Enter');
+  await expect(railResult.locator('details')).not.toHaveAttribute('open');
+});
+test('expired page removes its old data and offers explicit whole-search restart', async ({ page }) => {
+  await mock(page, { many: true, expired: true }); await page.goto(share({ mode: 'train' }));
+  await expect(page.locator('#coverage')).toContainText('SEARCH_EXPIRED');
+  await expect(page.locator('#trip-list article')).toHaveCount(1);
+  await expect(page.locator('#search-status')).toContainText('Ricerca incompleta');
+  await expect(page.getByRole('button', { name: 'Aggiorna ricerca' })).toBeEnabled();
+});
+test('empty success and rate-limit error have distinct states', async ({ page }) => {
+  await mock(page, { empty: true }); await page.goto(share({ mode: 'bus' }));
+  await expect(page.locator('#trip-list')).toContainText('Nessuna disponibilità restituita');
+  await page.unrouteAll({ behavior: 'wait' }); await mock(page, { rate: true }); await page.goto(share({ mode: 'bus' }));
+  await expect(page.locator('#trip-list')).toContainText('La ricerca non è completa');
+  await expect(page.locator('#coverage')).toContainText('RATE_LIMITED');
+  await expect(page.locator('#restart')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Cerca', exact: true })).toBeDisabled();
+});
+test('a new search ignores old responses and Back restores URL parameters', async ({ page }) => {
+  let oldRoute: Route | undefined;
+  await mock(page);
+  await page.route('**/api/journeys?**', async route => {
+    if (new URL(route.request().url()).searchParams.get('origin') === 'Vecchia') { oldRoute = route; return; }
+    await route.fallback();
+  });
+  await page.goto(share({ mode: 'bus', origin: 'Vecchia' }));
+  await expect.poll(() => !!oldRoute).toBe(true);
+  await page.locator('#origin').fill('Roma'); await page.locator('#origin').press('Escape');
+  await page.getByRole('button', { name: 'Cerca', exact: true }).click();
+  await expect(page.locator('#search-status')).toContainText('Ricerca completata');
+  await oldRoute!.fulfill({ json: snapshot([{ ...bus(), origin: { id: 'old', name: 'Vecchia risposta obsoleta' } }]) }).catch(() => {});
+  await expect(page.locator('#trip-list')).not.toContainText('Vecchia risposta obsoleta');
+  await expect(page.locator('#search-summary')).toContainText('Roma');
+  await page.goBack();
+  await expect(page.locator('#origin')).toHaveValue('Vecchia');
+});
+test('repeated submit does not duplicate an active search and invalid dates stay local', async ({ page }) => {
+  let held: Route | undefined, journeyCalls = 0;
+  await mock(page);
+  await page.route('**/api/journeys?**', async route => { journeyCalls++; held = route; });
+  await page.goto(share({ mode: 'bus' }));
+  await expect.poll(() => !!held).toBe(true);
+  await page.getByRole('button', { name: 'Cerca', exact: true }).click();
+  expect(journeyCalls).toBe(1);
+  await held!.fulfill({json:snapshot([bus()])});
+  await expect(page.locator('#trip-list article')).toHaveCount(1);
+  await page.locator('#date').fill('2026-11-04');
+  await page.getByRole('button', { name: 'Cerca', exact: true }).click();
+  expect(journeyCalls).toBe(1);
+});
+
+test('minimal total search and dark theme preserve the native Italo partner connection', async ({page}, testInfo) => {
+  const requests=await mock(page,{connection:true}); await page.goto('/');
+  await expect(page.getByRole('radio',{name:'Tutti',exact:true})).toBeChecked();
+  await expect(page.locator('#search-form input[role=combobox]')).toHaveCount(2);
+  expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('dark');
+  await page.locator('#origin').fill('Roma'); await page.locator('#origin').press('Escape');
+  await page.locator('#destination').fill('Cosenza'); await page.locator('#destination').press('Escape');
+  await page.locator('#date').fill('2027-01-15');
+  await page.screenshot({path:`test-results/search-dark-${testInfo.project.name}.png`});
+  await page.getByRole('button',{name:'Cerca',exact:true}).click();
+  await expect(page.locator('#search-status')).toContainText('Ricerca completata');
+  await expect(page.locator('#trip-list article')).toHaveCount(3);
+  expect(requests.find(r=>r.pathname.endsWith('/train-journeys'))!.searchParams.get('origin')).toBe('trenitalia:Roma');
+  const italo=page.locator('#trip-list article').filter({hasText:'Italo'});
+  await italo.locator('summary').click();
+  await expect(italo.locator('.legs')).toContainText('Italo · Treno 1000');
+  await expect(italo.locator('.legs')).toContainText('Trenitalia · Treno 5000');
+  await expect(italo.locator('.legs')).toContainText('Cambio: 20 min · Paola');
+  await expect(italo.locator('.fare')).toContainText('22,60 EUR');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

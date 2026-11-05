@@ -146,7 +146,7 @@ MCPHub Streamable HTTP configuration:
 ```json
 {
   "type": "streamable-http",
-  "url": "http://italian-travel-search.extra-tools.svc:3000/mcp"
+  "url": "http://italian-travel-search:3000/mcp"
 }
 ```
 

@@ -5,6 +5,12 @@ on:
     branches: [master]
     paths:
       - 'src/**'
+      - 'frontend/*.ts'
+      - 'frontend/index.html'
+      - 'frontend/styles.css'
+      - 'frontend/package*.json'
+      - 'frontend/tsconfig.json'
+      - '!frontend/playwright*.ts'
       - 'package.json'
       - 'package-lock.json'
       - 'Dockerfile'

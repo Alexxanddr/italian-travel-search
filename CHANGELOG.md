@@ -2,6 +2,13 @@
 
 All notable changes will be documented here. Releases follow Semantic Versioning.
 
+## Unreleased
+
+- Add the dark Binario frontend with a unified city/date search, bus/train views, progressive provider results, stable snapshot pagination, filters and official booking links.
+- Share HTTP domain types and show actual stops, nullable fares, passenger basis, partner operators and excluded-transfer warnings without inventing data.
+- Bundle the frontend into the existing Node Docker image and listener, with static security headers, restricted assets and same-origin browser API aliases; preserve legacy HTTP and MCP routes.
+- Add offline desktop/mobile and container verification, frontend CI and publication guards; document historical local-path metadata without rewriting Git history.
+
 ## 0.3.8 - 2026-11-05
 
 - Preserve native Italo + Trenitalia regional connections, including Roma–Paola–Cosenza, with per-leg operators and a complete itinerary fare.

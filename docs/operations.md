@@ -149,3 +149,7 @@ For MCPHub, set `MCP_URL` to its configured endpoint and supply the key through
 disabled. Never put the token in command arguments or source files. The script
 tests all eight tools, rail pagination, both operators' boards/status and real
 prices; legitimate provider failures remain visible in its JSON output.
+
+## Local web interface
+
+The optional web interface is in `frontend/` in this repository. Run `npm ci --prefix frontend`, then `npm run web:dev` alongside the API. Set a server-side API_ORIGIN in ignored `frontend/.env.local` only when the API origin differs from the loopback default. `npm run build:all` builds both outputs; `npm run check:all` includes the offline frontend/browser checks. No hosting or deployment is required to publish the repository. The existing [root Dockerfile](../Dockerfile) now builds both the backend and frontend, copying static assets to `/app/frontend/dist`. Its final image runs only `node dist/index.js` as the `node` user, with HOST=0.0.0.0 on port 3000. `/` serves the UI, `/api/*` aliases the browser search endpoints, and the existing HTTP routes and `/mcp` remain available. No NGINX, second process or runtime API_ORIGIN setting is needed. `node dist/index.js` after `npm run build:all` provides the same behavior without Docker. See [single-image packaging](../frontend/docs/deployment.md).

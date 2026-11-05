@@ -8,6 +8,7 @@ The application provides small read-only HTTP and MCP interfaces over incompatib
 
 | Path | Responsibility |
 |---|---|
+| `frontend/` | Binario web UI, shared domain types, offline browser tests and single-image assets |
 | `src/domain.ts` | Normalized data types and application errors |
 | `src/app.ts` | HTTP validation, routing, status selection, and rate limiting |
 | `src/mcp/` | Shared MCP tools and stdio process entrypoint |
@@ -187,3 +188,7 @@ The automated suite is deterministic and offline. Live checks are separate, low-
 - Connections are returned only when reported by the booking API; the service does not construct routes from timetables or combine independently searched tickets. Italo native planning responses may contain an Italo service followed by a Trenitalia regional connection; the adapter preserves both operators and requires contiguous stations and non-overlapping times.
 
 Production-hardening implications are documented in [operations.md](operations.md).
+
+## Web frontend
+
+`frontend/` is part of this repository and has its own npm manifest/lockfile. Root `web:*`, `build:all` and `check:all` scripts coordinate it with the existing backend toolchain. Its contracts module is a type-only re-export of `src/domain.ts`; no provider, session or MCP implementation is bundled into the browser. Vite proxies API calls in development. In the combined image, `src/web.ts` serves built static assets and maps six `/api/*` aliases to the same HTTP handler, rate limiter and provider instances. Static files do not consume the API rate budget. See the [frontend architecture](../frontend/docs/architecture.md). The existing root Dockerfile includes the built UI alongside the compiled API/MCP server; one Node process listens on port 3000. The npm export stays API/MCP-focused and does not include frontend assets/tooling.

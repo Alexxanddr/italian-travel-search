@@ -67,3 +67,9 @@ search into old results. Invalid inputs return 400 `INVALID_INPUT`.
 Results larger than 1 MiB cannot be snapshotted (413 `SEARCH_TOO_LARGE`);
 narrow the query. At most 32 snapshots are retained per process.
 Expiry does not guarantee that a saved fare remains purchasable.
+
+## Combined frontend listener
+
+The Node HTTP listener also serves the built web interface at `/` (and `/index.html`) and its generated JavaScript/CSS at `/assets/`. Static GET/HEAD requests do not consume the API limit. Static file names are restricted to the generated asset directory; source, environment files, source maps and arbitrary fallback paths are not exposed. Missing frontend builds return 404 without disabling the API.
+
+Browser GET aliases `/api/providers`, `/api/train-providers`, `/api/locations`, `/api/train-locations`, `/api/journeys` and `/api/train-journeys` use the same validation, client rate budget, providers and snapshots as the original routes. Query strings and snapshot continuation parameters are preserved. There is no `/api/mcp` alias; MCP remains at `/mcp`. No existing bus/train response contract changed. Vite uses its own proxy only during development/preview.

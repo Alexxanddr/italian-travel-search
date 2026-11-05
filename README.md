@@ -75,6 +75,46 @@ curl 'http://127.0.0.1:3000/journeys?origin=Roma&destination=Milano&date=YYYY-MM
 
 `YYYY-MM-DD` is a placeholder and must be replaced before running the command.
 
+## Web frontend
+
+The dark, Italian-language **Binario** interface lives in [`frontend/`](frontend/README.md) in this repository. It searches bus and train journeys through the HTTP API, with a single origin/destination/date form, progressive results, stable snapshot pagination and official booking links. It has no account, payment, AI model or direct provider/MCPHub access in the browser.
+
+From the repository root:
+
+```sh
+npm ci
+npm ci --prefix frontend
+npm start
+# In another terminal, from the same repository root:
+npm run web:dev
+# Open http://127.0.0.1:5173
+```
+
+The local frontend proxy defaults to the API at `http://127.0.0.1:3000`. Optional local configuration belongs in ignored `frontend/.env.local`; copy `frontend/.env.example` if needed. Never use browser-exposed `VITE_*` variables for credentials.
+
+```sh
+npm run build:all
+# Install Chromium once before running browser tests:
+cd frontend
+npx playwright install chromium
+cd ..
+npm run check:all
+```
+
+`npm run build` and `npm run check` retain their existing backend behavior. The frontend shares domain types and keeps its own build lockfile. The existing root Dockerfile builds both parts into **one image**: Node serves the UI at `/`, the browser API at `/api/*`, the existing HTTP endpoints and MCP at `/mcp`, all on port 3000. No NGINX or second container is needed. The npm package remains API/MCP-focused and excludes frontend assets/tooling. See the [frontend guide](frontend/README.md), [single-image Docker packaging](frontend/docs/deployment.md), and [publication review](docs/publication-review.md). Publishing source code does not require hosting a live website.
+
+### One image, one process
+
+```sh
+docker build -t italian-travel-search:local .
+docker run --rm -p 127.0.0.1:3000:3000 italian-travel-search:local
+# UI: http://127.0.0.1:3000/
+# API: http://127.0.0.1:3000/api/providers (also /providers)
+# MCP: http://127.0.0.1:3000/mcp
+```
+
+Without Docker, `npm run build:all` followed by `node dist/index.js` serves the same combined application. `npm run web:dev` remains the optional development server with live rebuilding.
+
 ## HTTP interface
 
 | Method | Path | Purpose |

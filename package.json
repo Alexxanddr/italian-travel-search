@@ -58,7 +58,12 @@
     "type-check": "tsc --noEmit",
     "lint": "tsc --noEmit --pretty false",
     "check": "npm run test && npm run type-check && npm run lint && npm run build",
-    "prepack": "npm run check"
+    "prepack": "npm run check",
+    "web:dev": "npm --prefix frontend run dev",
+    "web:build": "npm --prefix frontend run build",
+    "web:check": "npm --prefix frontend run check",
+    "build:all": "npm run build && npm run web:build",
+    "check:all": "npm run check && npm run web:check"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.4.0",

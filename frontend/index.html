@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101923"><meta name="description" content="Cerca e confronta bus e treni in Italia. Orari, prezzi osservati e collegamenti ai siti ufficiali.">
+<title>Binario · Bus e treni, a confronto</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23153a59'/%3E%3Cpath d='M12 8v24m16-24v24M12 16h16M12 25h16' stroke='%23ffd45a' stroke-width='4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css"><script type="module" src="/main.ts"></script>
+</head>
+<body>
+<a class="skip" href="#results">Vai ai risultati</a>
+<header class="masthead"><a href="/" class="brand" aria-label="Binario, nuova ricerca"><span class="brand-symbol" aria-hidden="true">b.</span>binario</a><span class="brand-note">Italia, un viaggio alla volta.</span><a href="#how">Come funziona</a></header>
+<main>
+<section class="intro"><h1>Dove vuoi andare?</h1><p>Cerca bus e treni, in un solo posto.</p></section>
+<section class="search-panel" aria-labelledby="search-title"><h2 id="search-title" class="sr-only">Cerca un viaggio di sola andata</h2>
+<form id="search-form">
+<fieldset class="mode-picker"><legend class="sr-only">Mezzi da cercare</legend><label><input type="radio" name="mode" value="both" checked><span>Tutti</span></label><label><input type="radio" name="mode" value="bus"><span>Bus</span></label><label><input type="radio" name="mode" value="train"><span>Treni</span></label><span class="one-way">Solo andata</span></fieldset>
+<div class="search-fields">
+<div class="autocomplete"><label for="origin">Da</label><input id="origin" name="origin" placeholder="Città di partenza" required maxlength="200" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-options"><div id="origin-options" class="options" role="listbox" hidden></div><small id="origin-status" class="lookup-status" role="status"></small></div>
+<button class="swap" type="button" data-swap aria-label="Scambia partenza e arrivo">⇄</button>
+<div class="autocomplete"><label for="destination">A</label><input id="destination" name="destination" placeholder="Città di arrivo" required maxlength="200" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-options"><div id="destination-options" class="options" role="listbox" hidden></div><small id="destination-status" class="lookup-status" role="status"></small></div>
+<label class="date-field" for="date">Data<input id="date" name="date" type="date" required></label>
+<button class="primary" type="submit">Cerca <span aria-hidden="true">↗</span></button>
+</div>
+<details class="passenger-picker"><summary>Passeggeri</summary><div><label>Adulti<input name="adults" type="number" min="1" max="9" value="1" required></label><label>Bambini<input name="children" type="number" min="0" max="9" value="0" required></label></div></details>
+<p id="form-error" role="alert"></p>
+</form></section>
+<div id="search-summary" class="search-summary" hidden></div>
+<section id="results" tabindex="-1" aria-label="Confronto dei viaggi"><div id="search-status" role="status" aria-live="polite"></div><div id="coverage"></div><div id="suggestions"></div>
+<div id="comparison" class="comparison" hidden>
+<aside><details id="filter-panel" open><summary>Filtri di ricerca</summary><form id="filters"><h2>Affina il viaggio</h2><label class="check"><input type="checkbox" name="future">Solo partenze future</label><p class="muted">Orari in Europe/Rome.</p><label>Mezzo<select name="mode"><option value="all">Bus e treni</option><option value="bus">Bus</option><option value="train">Treni</option></select></label><fieldset id="operator-filters"><legend>Operatori</legend></fieldset><p class="muted">Nessuna selezione: tutti gli operatori.</p><div class="time-filters"><label>Dalle<input name="from" type="time"></label><label>Alle<input name="to" type="time"></label></div><label>Prezzo massimo treni<input name="maxPrice" type="number" min="0" step="0.01" placeholder="Nessun limite"></label><label>Valuta<select name="currency"><option>EUR</option></select></label><p class="muted">Il filtro prezzo usa solo totali ferroviari nella valuta scelta. Prezzi mancanti e bus sono esclusi quando è attivo.</p><label>Cambi (solo dato noto)<select name="changes"><option value="">Qualsiasi / non indicati</option><option value="0">Nessun cambio</option><option value="1">Fino a 1</option><option value="2">Fino a 2</option></select></label><button type="reset" class="text-button">Azzera filtri</button></form></details></aside>
+<div class="result-column"><div class="results-toolbar"><h2 id="result-count">Soluzioni</h2><label>Ordina per <select id="sort"><option value="departure">Partenza</option><option value="price">Prezzo</option><option value="duration">Durata</option></select></label></div><p id="sort-note" class="muted"></p><div id="trip-list"></div></div></div>
+<div id="initial-state" class="initial-state"><p>Scegli la tratta e la data per confrontare le partenze.</p></div>
+</section>
+<details id="how" class="how"><summary>Come funziona</summary><h2>Confronti qui. Prosegui con loro.</h2><p>Binario consulta Italian Travel Search: bus e treni dagli operatori supportati, senza account né pagamenti interni. Prezzi e disponibilità sono osservazioni e possono cambiare. Conferma sempre importo, passeggeri e condizioni sul sito ufficiale.</p><p>I prezzi treno sono totali per i passeggeri richiesti. Per i bus, il servizio non dichiara la base passeggeri: gli importi restano separati dal confronto dei totali ferroviari. Nessuna tariffa aggiuntiva viene stimata.</p></details>
+</main><footer><a class="brand" href="/">binario</a><span>Italian Travel Search · Servizio indipendente, non affiliato agli operatori.</span></footer>
+<noscript>Per cercare e confrontare i viaggi abilita JavaScript.</noscript>
+</body></html>

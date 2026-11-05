@@ -11,3 +11,12 @@ docs/private
 *.hide.md
 .claude-flow
 .cloudeflow
+
+**/.git
+**/node_modules
+**/dist
+**/.env*
+**/docs/private
+**/test-results
+**/playwright-report
+**/.DS_Store
