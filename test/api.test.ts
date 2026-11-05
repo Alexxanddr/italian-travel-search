@@ -29,7 +29,7 @@ test("serves health and validates journey input", async () => {
   const invalid = await app(new Request("http://localhost/journeys?origin=Roma&destination=Milano&date=bad"));
   assert.equal(invalid.status, 400);
   assert.deepEqual(await invalid.json(), {
-    error: { code: "INVALID_INPUT", message: "date must be a real future date in YYYY-MM-DD format" },
+    error: { code: "INVALID_INPUT", message: "date must be a real date on or after today in Europe/Rome, in YYYY-MM-DD format" },
   });
 });
 
@@ -161,4 +161,22 @@ test("returns live rail HTTP prices without changing bus routes", async () => {
   const bus = await app(new Request("http://localhost/locations?query=Roma&provider=itabus"));
   assert.equal(bus.status, 200);
   assert.equal(((await bus.json()) as { locations: Array<{ id: string }> }).locations[0]?.id, "ROM1");
+});
+
+test("HTTP accepts today's bus and rail date without shifting it or calling providers for past dates", async (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-04T23:30:00Z") });
+  const received: string[] = [];
+  const bus: Provider = { ...provider, searchJourneys: async (input) => { received.push(input.date); return []; } };
+  const rail: RailProvider = { id: "trenitalia", searchLocations: async () => [], searchJourneys: async (input) => { received.push(input.date); return []; } };
+  const app = createApp([bus], [rail], []);
+  for (const path of ["journeys", "train-journeys"]) {
+    for (const suffix of ["", "&snapshot=true&offset=0&limit=50"]) {
+      const response = await app(new Request(`http://localhost/${path}?origin=Roma&destination=Paola&date=2026-11-05${suffix}`));
+      assert.equal(response.status, 200);
+      assert.equal((await response.json() as { errors: Array<{ code: string }> }).errors[0]?.code, "NO_JOURNEYS");
+    }
+    const past = await app(new Request(`http://localhost/${path}?origin=Roma&destination=Paola&date=2026-11-04`));
+    assert.equal(past.status, 400);
+  }
+  assert.deepEqual(received, Array(4).fill("2026-11-05"));
 });

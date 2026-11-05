@@ -352,3 +352,22 @@ test("serves tool discovery over stdio without corrupting the protocol", async (
     "get_station_board",
   ]);
 });
+
+test("MCP accepts today's bus and train searches unchanged, and rejects yesterday", async (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-04T23:30:00Z") });
+  const received: string[] = [];
+  const bus = workingProvider({ locations: 0, journeys: 0 });
+  bus.searchJourneys = async (input) => { received.push(input.date); return []; };
+  const rail: RailProvider = { id: "trenitalia", searchLocations: async () => [], searchJourneys: async (input) => { received.push(input.date); return []; } };
+  const { client, server } = await connect([bus], [rail]);
+  context.after(async () => { await client.close(); await server.close(); });
+  for (const name of ["search_journeys", "search_train_journeys"]) {
+    const args = { origin: "Roma", destination: "Paola", date: "2026-11-05", snapshot: true, offset: 0, limit: 50 };
+    const today = await client.callTool({ name, arguments: args });
+    assert.notEqual(today.isError, true);
+    assert.equal((today.structuredContent as { errors: Array<{ code: string }> }).errors[0]?.code, "NO_JOURNEYS");
+    const past = await client.callTool({ name, arguments: { ...args, date: "2026-11-04" } });
+    assert.equal(past.isError, true);
+  }
+  assert.deepEqual(received, ["2026-11-05", "2026-11-05"]);
+});

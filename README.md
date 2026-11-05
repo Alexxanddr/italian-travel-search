@@ -67,7 +67,7 @@ curl http://127.0.0.1:3000/train-providers
 curl 'http://127.0.0.1:3000/locations?query=Roma&provider=marinobus'
 ```
 
-For journey searches, use a real future date:
+For journey searches, use today or a future date in `Europe/Rome`:
 
 ```sh
 curl 'http://127.0.0.1:3000/journeys?origin=Roma&destination=Milano&date=YYYY-MM-DD&adults=1&children=0&provider=marinobus'

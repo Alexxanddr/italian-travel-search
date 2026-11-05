@@ -124,7 +124,7 @@ Thin subclasses contain only stable tenant configuration. Shared behavior stays 
 
 ### Aggregate journey search
 
-1. The inbound adapter validates the future date and passenger counts through `validation.ts`.
+1. The inbound adapter validates today or a future date in `Europe/Rome` and passenger counts through `validation.ts`.
 2. `SearchService` selects providers and invokes them concurrently.
 3. Each adapter resolves provider-specific origin and destination identifiers.
 4. Each adapter serves a fresh cached result or makes one timed upstream request.

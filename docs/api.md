@@ -11,8 +11,10 @@ identifier in each process-local minute. `GET /health` returns
 `{"status":"ok"}` without contacting any provider.
 
 `/health` is exempt from the request limit. Input text is trimmed and limited
-to 200 characters. Search dates must be after today's date in `Europe/Rome`,
-independently of the host timezone. An empty successful search returns `200`
+to 200 characters. Search dates can be today or later in `Europe/Rome`,
+independently of the host timezone. Past and invalid calendar dates are rejected.
+Same-day searches retain the requested calendar date; they do not automatically
+remove departures earlier in the day or guarantee that those departures remain bookable. An empty successful search returns `200`
 with `NO_JOURNEYS`; upstream failure with no journeys returns `503`.
 
 Provider failures are isolated. Aggregate responses preserve successful data

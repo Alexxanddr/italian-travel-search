@@ -2,6 +2,11 @@
 
 All notable changes will be documented here. Releases follow Semantic Versioning.
 
+## 0.3.7 - 2026-11-05
+
+- Accept same-day bus and train journey searches using the Europe/Rome calendar; continue rejecting past and invalid dates.
+- Clarify the shared HTTP/MCP date contract and add midnight/DST regressions.
+
 ## 0.3.6 - 2026-10-27
 
 - Exclude FlixBus next-day suggestions using the Europe/Rome departure date and use the Italian booking site for EUR links.

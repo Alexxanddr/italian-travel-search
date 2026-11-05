@@ -18,7 +18,7 @@ export function validateSearchInput(input: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) invalidDate();
   const parsedDate = new Date(`${date}T00:00:00Z`);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  if (Number.isNaN(parsedDate.valueOf()) || parsedDate.toISOString().slice(0, 10) !== date || date <= today) invalidDate();
+  if (Number.isNaN(parsedDate.valueOf()) || parsedDate.toISOString().slice(0, 10) !== date || date < today) invalidDate();
 
   return {
     origin: requiredText(input.origin, "origin"),
@@ -65,5 +65,5 @@ function passengerCount(value: unknown, name: string, fallback: number, minimum:
 }
 
 function invalidDate(): never {
-  throw new AppError("INVALID_INPUT", "date must be a real future date in YYYY-MM-DD format", 400);
+  throw new AppError("INVALID_INPUT", "date must be a real date on or after today in Europe/Rome, in YYYY-MM-DD format", 400);
 }

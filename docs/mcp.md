@@ -14,7 +14,7 @@ For a request such as “find buses from Rome to Milan on 15 November,” the ho
 
 1. call `search_locations` for the origin and destination;
 2. choose IDs or exact names from the returned provider locations;
-3. call `search_journeys` with a real future date in `YYYY-MM-DD` format;
+3. call `search_journeys` with today or a future date in `Europe/Rome` in `YYYY-MM-DD` format;
 4. present the returned journeys and official `bookingUrl` values to the user.
 
 Natural-language interpretation belongs to the host model, not this server. Train searches follow the same location-first flow using the train-specific tools.
@@ -42,7 +42,7 @@ Returns `locations`, provider-scoped `errors`, `total` before limiting, and `tru
 |---|---:|---:|---|
 | `origin` | yes | — | Exact name or ID returned by `search_locations` |
 | `destination` | yes | — | Exact name or ID returned by `search_locations` |
-| `date` | yes | — | Real future date in `YYYY-MM-DD` format |
+| `date` | yes | — | Today or a future date in `Europe/Rome`, in `YYYY-MM-DD` format |
 | `adults` | no | `1` | Integer from 1 through 9 |
 | `children` | no | `0` | Integer from 0 through 9 |
 | `provider` | no | all | Configured provider ID |

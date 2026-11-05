@@ -178,7 +178,7 @@ export function createBusMcpServer(dependencies: BusMcpDependencies = {}): McpSe
     inputSchema: z.object({ snapshot: z.boolean().default(false), searchId: z.string().optional(),
       origin: z.string().optional().describe("Exact shared location name for aggregate searches, or a provider-specific ID when provider is set"),
       destination: z.string().optional().describe("Exact shared location name for aggregate searches, or a provider-specific ID when provider is set"),
-      date: z.string().optional().describe("Real future date in YYYY-MM-DD format"),
+      date: z.string().optional().describe("Today or a future date in Europe/Rome, in YYYY-MM-DD format"),
       adults: z.number().int().min(1).max(9).optional(),
       children: z.number().int().min(0).max(9).optional(),
       provider: z.string().optional().describe("Provider ID; omit to search every provider"),
@@ -220,7 +220,7 @@ export function createBusMcpServer(dependencies: BusMcpDependencies = {}): McpSe
   server.registerTool("search_train_journeys", {
     title: "Search Italian train journeys",
     description: "TRAINS ONLY. Requires origin, destination, and date. When the user states passenger counts, always pass adults and children explicitly. Each price is the total for those passengers; never infer discounts or convert it to a per-person price. For stable pagination start with snapshot:true; continue using only searchId, offset and limit.",
-    inputSchema: z.object({ snapshot: z.boolean().default(false), searchId: z.string().optional(), origin: z.string().optional(), destination: z.string().optional(), date: z.string().optional(), adults: z.number().int().min(1).max(9).optional().describe("Number of adult passengers; pass explicitly when stated by the user"), children: z.number().int().min(0).max(9).optional().describe("Number of child passengers; pass explicitly when stated by the user, including zero"), provider: z.enum(["trenitalia", "italo"]).optional(), offset: z.number().int().min(0).default(0).describe("Result offset; paginate by adding the previous limit when truncated is true"), limit: z.number().int().min(1).max(maximumResultLimit).default(defaultResultLimit) }),
+    inputSchema: z.object({ snapshot: z.boolean().default(false), searchId: z.string().optional(), origin: z.string().optional(), destination: z.string().optional(), date: z.string().optional().describe("Today or a future date in Europe/Rome, in YYYY-MM-DD format"), adults: z.number().int().min(1).max(9).optional().describe("Number of adult passengers; pass explicitly when stated by the user"), children: z.number().int().min(0).max(9).optional().describe("Number of child passengers; pass explicitly when stated by the user, including zero"), provider: z.enum(["trenitalia", "italo"]).optional(), offset: z.number().int().min(0).default(0).describe("Result offset; paginate by adding the previous limit when truncated is true"), limit: z.number().int().min(1).max(maximumResultLimit).default(defaultResultLimit) }),
     outputSchema: z.object({ searchId: z.string().optional(), createdAt: z.string().optional(), expiresAt: z.string().optional(), journeys: z.array(railJourneySchema), errors: z.array(providerErrorSchema), total: z.number().int().nonnegative(), truncated: z.boolean() }), annotations,
   }, async ({ origin, destination, date, adults, children, provider, offset, limit, snapshot, searchId }) => {
     try {

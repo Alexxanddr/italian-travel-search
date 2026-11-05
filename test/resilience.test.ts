@@ -30,7 +30,26 @@ test("cancels oversized streamed responses without exposing upstream data", asyn
 
 test("uses the Italian calendar date at midnight and validates bounded text", () => {
   const input = { origin: "Roma", destination: "Cosenza", date: "2026-10-28" };
-  assert.throws(() => validateSearchInput(input, new Date("2026-10-27T23:30:00Z")), /future date/);
+  assert.equal(validateSearchInput(input, new Date("2026-10-27T23:30:00Z")).date, input.date);
+  assert.throws(() => validateSearchInput({ ...input, date: "2026-10-27" }, new Date("2026-10-27T23:30:00Z")), /on or after today/);
   assert.equal(validateSearchInput({ ...input, date: "2026-10-29" }, new Date("2026-10-27T23:30:00Z")).date, "2026-10-29");
   assert.throws(() => validateSearchInput({ ...input, date: "2027-01-01", origin: "a".repeat(201) }, new Date("2026-10-27T12:00:00Z")), /200 characters/);
+});
+
+
+test("accepts today across Italian midnight and DST boundaries, but rejects past and invalid dates", () => {
+  const input = { origin: "Roma", destination: "Cosenza" };
+  for (const [now, today, yesterday] of [
+    ["2026-11-05T12:00:00Z", "2026-11-05", "2026-11-04"],
+    ["2026-11-04T23:00:00Z", "2026-11-05", "2026-11-04"],
+    ["2026-07-04T22:00:00Z", "2026-07-05", "2026-07-04"],
+    ["2026-03-29T01:30:00Z", "2026-03-29", "2026-03-28"],
+    ["2026-10-25T01:30:00Z", "2026-10-25", "2026-10-24"],
+  ]) {
+    assert.equal(validateSearchInput({ ...input, date: today }, new Date(now!)).date, today);
+    assert.throws(() => validateSearchInput({ ...input, date: yesterday }, new Date(now!)), /on or after today/);
+  }
+  for (const date of ["2027-02-29", "2026-11-31", "2026-13-01", "2026-11-5"]) {
+    assert.throws(() => validateSearchInput({ ...input, date }, new Date("2026-11-05T12:00:00Z")), /real date/);
+  }
 });

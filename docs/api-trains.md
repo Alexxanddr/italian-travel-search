@@ -114,7 +114,7 @@ Use station names for cross-operator searches. IDs are operator-specific.
 |---|---:|---:|---|
 | `origin` | yes | — | Exact station name or matching operator station ID |
 | `destination` | yes | — | Exact station name or matching operator station ID |
-| `date` | yes | — | Real future date in `YYYY-MM-DD` format |
+| `date` | yes | — | Today or a future date in `Europe/Rome`, in `YYYY-MM-DD` format |
 | `adults` | no | `1` | Integer from 1 through 9 |
 | `children` | no | `0` | Integer from 0 through 9 |
 | `provider` | no | both | `trenitalia` or `italo` |
